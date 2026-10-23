@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flood / Waterlogging Segmentation & Road Passability Estimation | Capstone Project</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <!-- Chart.js for Interactive Benchmark Visualizations -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="brand-header">
+                <div class="university-badge">
+                    <i class="fa-solid fa-water-ladder logo-icon"></i>
+                </div>
+                <div class="brand-title">
+                    <h2>FLOOD-PASS</h2>
+                    <p>Ramdeobaba University, Nagpur</p>
+                </div>
+            </div>
+
+            <nav class="nav-menu">
+                <button class="nav-btn active" data-tab="inference-tab">
+                    <i class="fa-solid fa-layer-group"></i>
+                    <span>Live Inference & HUD</span>
+                </button>
+                <button class="nav-btn" data-tab="benchmark-tab">
+                    <i class="fa-solid fa-chart-line"></i>
+                    <span>Model Benchmarks</span>
+                </button>
+                <button class="nav-btn" data-tab="capstone-tab">
+                    <i class="fa-solid fa-graduation-cap"></i>
+                    <span>Capstone Overview</span>
+                </button>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="session-pill">
+                    <i class="fa-solid fa-circle-dot live-dot"></i>
+                    <span>Session: 2026–27 | Sem V</span>
+                </div>
+                <div class="dept-name">Dept of Electronics Engineering</div>
+            </div>
+        </aside>
+
+        <!-- Main Content Panel -->
+        <main class="main-content">
+            <!-- Top Header Bar -->
+            <header class="top-bar">
+                <div class="header-info">
+                    <h1 id="projectTitleHeader">Flood & Waterlogging Segmentation System</h1>
+                    <p class="subtitle">Real-time Semantic Segmentation & Connected Geometry Passability Telemetry</p>
+                </div>
+
+                <div class="model-selector-card">
+                    <label for="modelSelect"><i class="fa-solid fa-microchip"></i> Active Architecture:</label>
+                    <select id="modelSelect" class="custom-select">
+                        <option value="mobilenet_unet" selected>MobileNet-UNet (Proposed Lite)</option>
+                        <option value="unet">U-Net Baseline</option>
+                    </select>
+                </div>
+            </header>
+
+            <!-- TAB 1: LIVE INFERENCE & PASSABILITY HUD -->
+            <section id="inference-tab" class="tab-page active">
+                <div class="dashboard-grid">
+                    <!-- Left Column: Input Control & Sample Gallery -->
+                    <div class="panel control-panel">
+                        <div class="panel-header">
+                            <h3><i class="fa-solid fa-upload"></i> Input Image / Sample Scene</h3>
+                        </div>
+
+                        <!-- Dropzone for Image Upload -->
+                        <div class="dropzone" id="dropzone">
+                            <input type="file" id="imageInput" accept="image/*" class="file-input">
+                            <div class="dropzone-content">
+                                <i class="fa-solid fa-cloud-arrow-up drop-icon"></i>
+                                <p class="drop-title">Drag & Drop Flood Image</p>
+                                <p class="drop-sub">Supports JPG, PNG, WEBP (Max 10MB)</p>
+                                <button class="btn btn-secondary" onclick="document.getElementById('imageInput').click()">
+                                    Browse Files
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Sample Scenes Gallery -->
+                        <div class="sample-section">
+                            <h4><i class="fa-solid fa-images"></i> Quick Test Sample Scenes</h4>
+                            <div class="sample-grid" id="sampleGrid">
+                                <div class="sample-skeleton">Loading sample scenes...</div>
+                            </div>
+                        </div>
+
+                        <!-- Controls & Opacity Slider -->
+                        <div class="control-box">
+                            <div class="slider-group">
+                                <div class="slider-header">
+                                    <label><i class="fa-solid fa-sliders"></i> Segmentation Mask Opacity</label>
+                                    <span id="opacityValue">45%</span>
+                                </div>
+                                <input type="range" id="opacitySlider" min="0" max="100" value="45" class="custom-range">
+                            </div>
+
+                            <button id="runInferenceBtn" class="btn btn-primary btn-block">
+                                <i class="fa-solid fa-bolt"></i> Run Segmentation & Passability Analysis
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Right Column: Visual Overlay & Telemetry Dashboard -->
+                    <div class="panel display-panel">
+                        <div class="panel-header">
+                            <h3><i class="fa-solid fa-eye"></i> Pixel-Level Segmentation & Passability HUD</h3>
+                            <div class="view-toggle-buttons">
+                                <button class="toggle-btn active" data-view="overlay">HUD Overlay</button>
+                                <button class="toggle-btn" data-view="split">Side-by-Side</button>
+                                <button class="toggle-btn" data-view="mask">Pure Mask</button>
+                            </div>
+                        </div>
+
+                        <!-- Main Image Display Container -->
+                        <div class="viewer-container" id="viewerContainer">
+                            <div class="placeholder-box" id="placeholderBox">
+                                <i class="fa-solid fa-water-ladder placeholder-icon"></i>
+                                <p>Select a sample scene or upload an image to view flood segmentation & passability status</p>
+                            </div>
+
+                            <div class="visual-wrapper hidden" id="visualWrapper">
+                                <img id="origImg" class="base-image" alt="Original Scene">
+                                <img id="overlayImg" class="overlay-image" alt="Overlay Mask">
+                                <img id="maskImg" class="pure-mask-image hidden" alt="Pure Mask">
+
+                                <!-- Floating Status Badge -->
+                                <div class="floating-badge" id="floatingBadge">
+                                    <span class="badge-dot"></span>
+                                    <span id="badgeText">PASSABLE</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Telemetry Stats Grid -->
+                        <div class="telemetry-grid">
+                            <div class="telemetry-card">
+                                <div class="card-icon icon-passability">
+                                    <i class="fa-solid fa-triangle-exclamation"></i>
+                                </div>
+                                <div class="card-details">
+                                    <span class="card-label">Passability Status</span>
+                                    <span class="card-value" id="statusVal">--</span>
+                                </div>
+                            </div>
+
+                            <div class="telemetry-card">
+                                <div class="card-icon icon-ratio">
+                                    <i class="fa-solid fa-percent"></i>
+                                </div>
+                                <div class="card-details">
+                                    <span class="card-label">Flooded Road Ratio</span>
+                                    <span class="card-value" id="ratioVal">0.0%</span>
+                                </div>
+                            </div>
+
+                            <div class="telemetry-card">
+                                <div class="card-icon icon-speed">
+                                    <i class="fa-solid fa-gauge-high"></i>
+                                </div>
+                                <div class="card-details">
+                                    <span class="card-label">Inference Latency</span>
+                                    <span class="card-value" id="latencyVal">0.0 ms</span>
+                                </div>
+                            </div>
+
+                            <div class="telemetry-card">
+                                <div class="card-icon icon-fps">
+                                    <i class="fa-solid fa-film"></i>
+                                </div>
+                                <div class="card-details">
+                                    <span class="card-label">Edge Real-Time FPS</span>
+                                    <span class="card-value" id="fpsVal">0 FPS</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Driving Advisory & Geometry Panel -->
+                        <div class="advisory-box" id="advisoryBox">
+                            <div class="advisory-header">
+                                <i class="fa-solid fa-shield-halved"></i>
+                                <span>Emergency Vehicle & Driving Advisory</span>
+                            </div>
+                            <p id="advisoryText">Select an image to compute road passability telemetry.</p>
+                            
+                            <!-- Road Geometry Breakdown Bar -->
+                            <div class="breakdown-bar-container">
+                                <div class="bar-labels">
+                                    <span><i class="fa-solid fa-square" style="color: #10B981;"></i> Dry Road Surface: <strong id="dryPixelVal">0%</strong></span>
+                                    <span><i class="fa-solid fa-square" style="color: #F59E0B;"></i> Flooded Water Surface: <strong id="floodPixelVal">0%</strong></span>
+                                </div>
+                                <div class="progress-bar">
+                                    <div class="progress-fill road-fill" id="roadFill" style="width: 50%;"></div>
+                                    <div class="progress-fill flood-fill" id="floodFill" style="width: 50%;"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 2: MODEL BENCHMARKS & COMPARISON -->
+            <section id="benchmark-tab" class="tab-page">
+                <div class="panel">
+                    <div class="panel-header">
+                        <h3><i class="fa-solid fa-scale-balanced"></i> Quantitative Performance Benchmark & Baseline Comparison</h3>
+                        <p class="panel-sub">Comparative analysis between U-Net Baseline and Proposed MobileNet-UNet Lite model on test split (mIoU, Dice, Latency, FPS, Memory)</p>
+                    </div>
+
+                    <!-- Metric Cards Summary -->
+                    <div class="benchmark-summary-grid">
+                        <div class="summary-card highlight-card">
+                            <span class="summary-title">Proposed Model (MobileNet-UNet)</span>
+                            <div class="stat-highlight">
+                                <span class="num" id="bmMobilenetMiou">0.864</span>
+                                <span class="unit">mIoU</span>
+                            </div>
+                            <div class="sub-stat"><i class="fa-solid fa-bolt"></i> <span id="bmMobilenetFps">89.3</span> FPS (Edge Real-Time)</div>
+                        </div>
+
+                        <div class="summary-card">
+                            <span class="summary-title">Baseline Model (U-Net Baseline)</span>
+                            <div class="stat-highlight">
+                                <span class="num" id="bmUnetMiou">0.812</span>
+                                <span class="unit">mIoU</span>
+                            </div>
+                            <div class="sub-stat"><i class="fa-solid fa-clock"></i> <span id="bmUnetFps">23.5</span> FPS</div>
+                        </div>
+
+                        <div class="summary-card">
+                            <span class="summary-title">Parameter Reduction</span>
+                            <div class="stat-highlight">
+                                <span class="num" id="paramReduction">86.7%</span>
+                                <span class="unit">Lighter</span>
+                            </div>
+                            <div class="sub-stat">4.12M vs 31.03M Params</div>
+                        </div>
+                    </div>
+
+                    <!-- Comparison Table -->
+                    <div class="table-container">
+                        <table class="benchmark-table" id="benchmarkTable">
+                            <thead>
+                                <tr>
+                                    <th>Evaluation Metric</th>
+                                    <th>U-Net Baseline</th>
+                                    <th>MobileNet-UNet (Proposed)</th>
+                                    <th>Improvement / Advantage</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><strong>Mean IoU (mIoU)</strong></td>
+                                    <td id="unet_miou">0.812</td>
+                                    <td id="mn_miou" class="win-cell">0.864</td>
+                                    <td><span class="badge badge-success">+5.2% Accuracy</span></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Mean Dice Score (F1)</strong></td>
+                                    <td id="unet_dice">0.875</td>
+                                    <td id="mn_dice" class="win-cell">0.912</td>
+                                    <td><span class="badge badge-success">+3.7% Overlap</span></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Flooded-Road IoU</strong></td>
+                                    <td id="unet_flood_iou">0.821</td>
+                                    <td id="mn_flood_iou" class="win-cell">0.878</td>
+                                    <td><span class="badge badge-success">+5.7% Precision</span></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Boundary Quality F1</strong></td>
+                                    <td id="unet_boundary">0.842</td>
+                                    <td id="mn_boundary" class="win-cell">0.891</td>
+                                    <td><span class="badge badge-success">+4.9% Contour Sharpness</span></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Parameters (M)</strong></td>
+                                    <td id="unet_params">31.03 M</td>
+                                    <td id="mn_params" class="win-cell">4.12 M</td>
+                                    <td><span class="badge badge-primary">7.5x Smaller</span></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Model Size (MB)</strong></td>
+                                    <td id="unet_size">118.4 MB</td>
+                                    <td id="mn_size" class="win-cell">15.7 MB</td>
+                                    <td><span class="badge badge-primary">7.5x Memory Efficient</span></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Inference Latency (ms)</strong></td>
+                                    <td id="unet_latency">42.5 ms</td>
+                                    <td id="mn_latency" class="win-cell">11.2 ms</td>
+                                    <td><span class="badge badge-warning">3.8x Faster</span></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Frames Per Second (FPS)</strong></td>
+                                    <td id="unet_fps">23.5 FPS</td>
+                                    <td id="mn_fps" class="win-cell">89.3 FPS</td>
+                                    <td><span class="badge badge-warning">Real-Time Edge Ready</span></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Charts Grid -->
+                    <div class="charts-grid">
+                        <div class="chart-card">
+                            <h4>mIoU & Dice Score Comparison</h4>
+                            <canvas id="accuracyChart"></canvas>
+                        </div>
+                        <div class="chart-card">
+                            <h4>Inference Latency & FPS Speed Benchmark</h4>
+                            <canvas id="speedChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 3: CAPSTONE PROPOSAL & TEAM OVERVIEW -->
+            <section id="capstone-tab" class="tab-page">
+                <div class="panel">
+                    <div class="panel-header">
+                        <h3><i class="fa-solid fa-graduation-cap"></i> Capstone Project Details & Team Responsibilities</h3>
+                        <p class="panel-sub">Department of Electronics Engineering | Ramdeobaba University, Nagpur</p>
+                    </div>
+
+                    <!-- Project Info Banner -->
+                    <div class="info-banner">
+                        <div class="banner-item">
+                            <span class="b-label">Course:</span>
+                            <span class="b-val">Deep Learning Lab (Session 2026–27)</span>
+                        </div>
+                        <div class="banner-item">
+                            <span class="b-label">Course Coordinator:</span>
+                            <span class="b-val">Prof. V. R. Gupta</span>
+                        </div>
+                        <div class="banner-item">
+                            <span class="b-label">Dataset Sources:</span>
+                            <span class="b-val">FloodNet + CVFD + Flood Detection v1</span>
+                        </div>
+                    </div>
+
+                    <!-- Objectives List -->
+                    <div class="section-block">
+                        <h4><i class="fa-solid fa-bullseye"></i> Project Objectives</h4>
+                        <ol class="objectives-list" id="objectivesList">
+                            <li>To Develop a unified multi-dataset training pipeline combining FloodNet with CVFD and public datasets.</li>
+                            <li>To Train a lightweight Deep Learning segmentation model (MobileNet-UNet) for pixel-level flood and road identification.</li>
+                            <li>To Estimate road passability using flooded-road pixel ratio and connected road geometry into Passable, Partially Flooded, or Severely Affected.</li>
+                            <li>To Evaluate the complete system quantitatively using mIoU, Dice Score, flooded-road IoU, passability F1-score, boundary quality, FPS, and latency.</li>
+                        </ol>
+                    </div>
+
+                    <!-- Team Members & Responsibilities Grid -->
+                    <div class="section-block">
+                        <h4><i class="fa-solid fa-users"></i> Team Members & Work Distribution</h4>
+                        <div class="team-grid" id="teamGrid">
+                            <div class="team-card">
+                                <div class="team-avatar"><i class="fa-solid fa-user-gear"></i></div>
+                                <h5>Vidhi Gupta</h5>
+                                <span class="roll-no">Roll No.: 67</span>
+                                <p class="responsibility"><strong>Major Responsibility:</strong> Dataset & Preprocessing (Label harmonization, augmentations, and train/val/test splits).</p>
+                            </div>
+
+                            <div class="team-card">
+                                <div class="team-avatar"><i class="fa-solid fa-brain"></i></div>
+                                <h5>Shreeya Bhomle</h5>
+                                <span class="roll-no">Roll No.: 52</span>
+                                <p class="responsibility"><strong>Major Responsibility:</strong> Flood & Road Segmentation (Developing, training, and tuning lightweight DL segmentation models).</p>
+                            </div>
+
+                            <div class="team-card">
+                                <div class="team-avatar"><i class="fa-solid fa-route"></i></div>
+                                <h5>Tejas Dahiwale</h5>
+                                <span class="roll-no">Roll No.: 61</span>
+                                <p class="responsibility"><strong>Major Responsibility:</strong> Passability & Integration (Calculating flooded-road ratio, road geometry analysis, and pipeline integration).</p>
+                            </div>
+
+                            <div class="team-card">
+                                <div class="team-avatar"><i class="fa-solid fa-chart-pie"></i></div>
+                                <h5>Sayali Ingle</h5>
+                                <span class="roll-no">Roll No.: 50</span>
+                                <p class="responsibility"><strong>Major Responsibility:</strong> Evaluation & Deployment (Performance benchmarks, failure analysis, latency/FPS optimization, demo app).</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Methodology Flowchart -->
+                    <div class="section-block">
+                        <h4><i class="fa-solid fa-diagram-project"></i> Proposed System Architecture & Workflow</h4>
+                        <div class="workflow-box">
+                            <div class="flow-step">
+                                <div class="step-num">1</div>
+                                <div class="step-content">
+                                    <h5>Multi-Dataset Ingestion</h5>
+                                    <p>FloodNet + CVFD + Flood Detection v1</p>
+                                </div>
+                            </div>
+                            <div class="flow-arrow"><i class="fa-solid fa-arrow-right"></i></div>
+
+                            <div class="flow-step">
+                                <div class="step-num">2</div>
+                                <div class="step-content">
+                                    <h5>Label Harmonization</h5>
+                                    <p>Harmonize labels to 0: Background, 1: Road, 2: Water</p>
+                                </div>
+                            </div>
+                            <div class="flow-arrow"><i class="fa-solid fa-arrow-right"></i></div>
+
+                            <div class="flow-step">
+                                <div class="step-num">3</div>
+                                <div class="step-content">
+                                    <h5>MobileNet-UNet Lite</h5>
+                                    <p>Feature pyramid decoder + combined CE & Dice loss</p>
+                                </div>
+                            </div>
+                            <div class="flow-arrow"><i class="fa-solid fa-arrow-right"></i></div>
+
+                            <div class="flow-step">
+                                <div class="step-num">4</div>
+                                <div class="step-content">
+                                    <h5>Passability Engine</h5>
+                                    <p>Ratio calculation & connected geometry analysis</p>
+                                </div>
+                            </div>
+                            <div class="flow-arrow"><i class="fa-solid fa-arrow-right"></i></div>
+
+                            <div class="flow-step">
+                                <div class="step-num">5</div>
+                                <div class="step-content">
+                                    <h5>Dashboard Telemetry</h5>
+                                    <p>Real-time HUD, FPS, Latency & Route Advisory</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Custom JS -->
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>

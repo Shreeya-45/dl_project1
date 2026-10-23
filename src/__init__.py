@@ -1,0 +1,2 @@
+# Flood & Waterlogging Segmentation & Road Passability Estimation Package
+__version__ = "1.0.0"
