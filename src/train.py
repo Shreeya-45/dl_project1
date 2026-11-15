@@ -16,6 +16,8 @@ def train_epoch(model, dataloader, criterion, optimizer, device, epoch=1, total_
     running_loss = 0.0
     running_ce = 0.0
     running_dice = 0.0
+    correct_pixels = 0
+    total_pixels = 0
 
     pbar = tqdm(dataloader, desc=f"Epoch [{epoch:02d}/{total_epochs:02d}] Train", leave=False, dynamic_ncols=True)
     use_amp = (scaler is not None) and (device.type == 'cuda')
@@ -41,10 +43,16 @@ def train_epoch(model, dataloader, criterion, optimizer, device, epoch=1, total_
         running_ce += ce.item() * imgs.size(0)
         running_dice += dice.item() * imgs.size(0)
 
-        pbar.set_postfix({'loss': f"{loss.item():.4f}", 'dice': f"{dice.item():.4f}"})
+        preds = torch.argmax(logits, dim=1)
+        correct_pixels += int((preds == masks).sum().item())
+        total_pixels += int(masks.numel())
+
+        batch_acc = (preds == masks).float().mean().item()
+        pbar.set_postfix({'loss': f"{loss.item():.4f}", 'acc': f"{batch_acc:.4f}", 'dice': f"{dice.item():.4f}"})
 
     total_samples = len(dataloader.dataset)
-    return running_loss / total_samples, running_ce / total_samples, running_dice / total_samples
+    epoch_acc = correct_pixels / total_pixels if total_pixels > 0 else 0.0
+    return running_loss / total_samples, running_ce / total_samples, running_dice / total_samples, epoch_acc
 
 
 def evaluate(model, dataloader, criterion, device, num_classes=3):
@@ -142,14 +150,14 @@ def main():
         print("Automatic Mixed Precision (AMP) enabled for accelerated training.")
 
     best_miou = 0.0
-    history = {'train_loss': [], 'val_loss': [], 'val_miou': [], 'val_dice': []}
+    history = {'train_loss': [], 'train_acc': [], 'val_loss': [], 'val_acc': [], 'val_miou': [], 'val_dice': []}
 
     print("Starting Model Training...")
     start_train_time = time.time()
 
     for epoch in range(1, args.epochs + 1):
         epoch_start = time.time()
-        t_loss, t_ce, t_dice = train_epoch(
+        t_loss, t_ce, t_dice, t_acc = train_epoch(
             model, train_loader, criterion, optimizer, device, epoch=epoch, total_epochs=args.epochs, scaler=scaler
         )
         val_metrics = evaluate(model, val_loader, criterion, device)
@@ -157,16 +165,20 @@ def main():
 
         epoch_time = time.time() - epoch_start
         v_loss = val_metrics['val_loss']
+        v_acc = val_metrics['pixel_accuracy']
         v_miou = val_metrics['mIoU']
         v_dice = val_metrics['mean_dice']
 
         history['train_loss'].append(t_loss)
+        history['train_acc'].append(t_acc)
         history['val_loss'].append(v_loss)
+        history['val_acc'].append(v_acc)
         history['val_miou'].append(v_miou)
         history['val_dice'].append(v_dice)
 
         print(f"Epoch [{epoch:02d}/{args.epochs:02d}] ({epoch_time:.1f}s) | "
-              f"Train Loss: {t_loss:.4f} | Val Loss: {v_loss:.4f} | "
+              f"Train Loss: {t_loss:.4f} | Train Acc: {t_acc * 100:.2f}% | "
+              f"Val Loss: {v_loss:.4f} | Val Acc: {v_acc * 100:.2f}% | "
               f"Val mIoU: {v_miou:.4f} | Val Dice: {v_dice:.4f}", flush=True)
 
         # Save Best Checkpoint
@@ -185,9 +197,11 @@ def main():
     total_train_time = time.time() - start_train_time
     print(f"\nTraining Complete in {total_train_time / 60:.2f} mins! Best Val mIoU: {best_miou:.4f}")
 
-    # Plot & Save Training History
-    plt.figure(figsize=(10, 4))
-    plt.subplot(1, 2, 1)
+    # Plot & Save Training History (3-Panel: Loss, Accuracy, Segmentation Scores)
+    plt.figure(figsize=(15, 4))
+    
+    # 1. Loss
+    plt.subplot(1, 3, 1)
     plt.plot(range(1, args.epochs + 1), history['train_loss'], label='Train Loss', color='blue')
     plt.plot(range(1, args.epochs + 1), history['val_loss'], label='Val Loss', color='orange')
     plt.title('Training & Validation Loss')
@@ -196,10 +210,21 @@ def main():
     plt.grid(True)
     plt.legend()
 
-    plt.subplot(1, 2, 2)
-    plt.plot(range(1, args.epochs + 1), history['val_miou'], label='Val mIoU', color='green')
-    plt.plot(range(1, args.epochs + 1), history['val_dice'], label='Val Dice', color='purple')
-    plt.title('Validation Performance')
+    # 2. Accuracy
+    plt.subplot(1, 3, 2)
+    plt.plot(range(1, args.epochs + 1), history['train_acc'], label='Train Accuracy', color='darkgreen')
+    plt.plot(range(1, args.epochs + 1), history['val_acc'], label='Val Accuracy', color='teal')
+    plt.title('Pixel Accuracy')
+    plt.xlabel('Epoch')
+    plt.ylabel('Accuracy')
+    plt.grid(True)
+    plt.legend()
+
+    # 3. Validation mIoU & Dice
+    plt.subplot(1, 3, 3)
+    plt.plot(range(1, args.epochs + 1), history['val_miou'], label='Val mIoU', color='purple')
+    plt.plot(range(1, args.epochs + 1), history['val_dice'], label='Val Dice', color='crimson')
+    plt.title('Validation mIoU & Dice')
     plt.xlabel('Epoch')
     plt.ylabel('Score')
     plt.grid(True)

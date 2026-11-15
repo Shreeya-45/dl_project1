@@ -57,6 +57,8 @@ class CombinedCrossEntropyDiceLoss(nn.Module):
         self.dice_loss = DiceLoss()
 
     def forward(self, logits, targets):
+        if self.ce_loss.weight is not None and self.ce_loss.weight.device != logits.device:
+            self.ce_loss.weight = self.ce_loss.weight.to(logits.device)
         loss_ce = self.ce_loss(logits, targets)
         loss_dice = self.dice_loss(logits, targets)
         

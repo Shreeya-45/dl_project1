@@ -8,7 +8,7 @@ Class 2: Flood / Water (Flooded road, standing waterlogging, submerged road)
 
 FLOODNET_LABEL_MAP = {
     0: 0, # Background / Sky / Vegetation
-    1: 1, # Building -> Background
+    1: 0, # Building -> Background (0)
     2: 1, # Dry Road -> Road (1)
     3: 0, # Grass / Vegetation -> Background (0)
     4: 0, # Tree -> Background (0)
