@@ -1,0 +1,138 @@
+{
+  "U-Net Baseline": {
+    "pixel_accuracy": 0.0009095163056344697,
+    "mean_class_accuracy": 0.0013861796409886343,
+    "mIoU": 0.0009122260458112779,
+    "mean_dice": 0.0018194727802432083,
+    "mean_precision": 0.08767472543146484,
+    "mean_recall": 0.0013861796409886343,
+    "class_accuracy": [
+      0.0,
+      0.0,
+      0.0027723592819772686
+    ],
+    "class_iou": [
+      0.0,
+      0.0,
+      0.0027366781374338336
+    ],
+    "class_dice": [
+      0.0,
+      0.0,
+      0.005458418340729625
+    ],
+    "class_precision": [
+      0.0,
+      0.0,
+      0.1753494508629297
+    ],
+    "class_recall": [
+      0.0,
+      0.0,
+      0.0027723592819772686
+    ],
+    "road_iou": 0.0,
+    "flooded_road_iou": 0.0027366781374338336,
+    "boundary_f1": 0.0,
+    "passability_accuracy": 0.0768,
+    "passability_macro_f1": 0.0475,
+    "passability_f1_passable": 0.1426,
+    "passability_f1_partially_flooded": 0.0,
+    "passability_f1_severely_affected": 0.0,
+    "passability_confusion_matrix": [
+      [
+        38,
+        0,
+        0
+      ],
+      [
+        113,
+        0,
+        0
+      ],
+      [
+        344,
+        0,
+        0
+      ]
+    ],
+    "depth_mae_cm": 15.84,
+    "depth_rmse_cm": 17.99,
+    "depth_relative_error_pct": 114.87,
+    "num_params_m": 13.391,
+    "model_size_mb": 51.08,
+    "latency_ms": 11.55,
+    "fps": 86.6,
+    "peak_memory_mb": 207.54,
+    "estimated_power_w": 28.0,
+    "device": "cuda"
+  },
+  "MobileNet-UNet (Proposed)": {
+    "pixel_accuracy": 0.9128138378413037,
+    "mean_class_accuracy": 0.9009512651191778,
+    "mIoU": 0.5478212337889344,
+    "mean_dice": 0.6007254466465951,
+    "mean_precision": 0.9012255603034547,
+    "mean_recall": 0.9009512651191778,
+    "class_accuracy": [
+      0.9354486883055874,
+      0.0,
+      0.8664538419327681
+    ],
+    "class_iou": [
+      0.8781884241260176,
+      0.0,
+      0.7652752772407859
+    ],
+    "class_dice": [
+      0.9351441131734878,
+      0.0,
+      0.8670322267662975
+    ],
+    "class_precision": [
+      0.9348397363116261,
+      0.0,
+      0.8676113842952832
+    ],
+    "class_recall": [
+      0.9354486883055874,
+      0.0,
+      0.8664538419327681
+    ],
+    "road_iou": 0.0,
+    "flooded_road_iou": 0.7652752772407859,
+    "boundary_f1": 0.4563407949394789,
+    "passability_accuracy": 0.8323,
+    "passability_macro_f1": 0.7129,
+    "passability_f1_passable": 0.5797,
+    "passability_f1_partially_flooded": 0.6476,
+    "passability_f1_severely_affected": 0.9114,
+    "passability_confusion_matrix": [
+      [
+        20,
+        11,
+        7
+      ],
+      [
+        9,
+        68,
+        36
+      ],
+      [
+        2,
+        18,
+        324
+      ]
+    ],
+    "depth_mae_cm": 7.86,
+    "depth_rmse_cm": 10.58,
+    "depth_relative_error_pct": 189.88,
+    "num_params_m": 0.303,
+    "model_size_mb": 1.16,
+    "latency_ms": 2.98,
+    "fps": 335.7,
+    "peak_memory_mb": 114.3,
+    "estimated_power_w": 7.5,
+    "device": "cuda"
+  }
+}
